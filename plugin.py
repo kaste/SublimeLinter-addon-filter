@@ -112,16 +112,26 @@ def _make_filter_fn(term):
 
 class sublime_linter_addon_filter(sublime_plugin.WindowCommand):
     def run(self, pattern=''):
+        if pattern:
+            self.window.status_message(
+                "Filter pattern set to {!r}.".format(pattern)
+            )
+        else:
+            self.window.status_message("Reset filter pattern.")
+
         set_filter(pattern)
 
     def input(self, args):
         if 'pattern' in args:
             return None
 
-        return PatternInputHandler()
+        return PatternInputHandler(self.window)
 
 
 class PatternInputHandler(sublime_plugin.TextInputHandler):
+    def __init__(self, window):
+        self.window = window
+
     def preview(self, pattern):
         try:
             re.compile(pattern)
@@ -134,7 +144,7 @@ class PatternInputHandler(sublime_plugin.TextInputHandler):
         return Store['user_value']
 
     def cancel(self):
-        set_filter('')
+        self.window.run_command('sublime_linter_addon_filter', {'pattern': ''})
 
 
 class sublime_linter_addon_cycle_filter_patterns(sublime_plugin.WindowCommand):
