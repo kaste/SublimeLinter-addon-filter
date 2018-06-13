@@ -134,11 +134,20 @@ class PatternInputHandler(sublime_plugin.TextInputHandler):
 
     def preview(self, pattern):
         try:
-            re.compile(pattern)
-        except re.error:
-            return
+            make_filter_fn(pattern)
+        except re.error as e:
+            exc_str = str(e)
+            return "{}{}.".format(exc_str[0].upper(), exc_str[1:])
 
         set_filter(pattern)
+
+    def validate(self, pattern):
+        try:
+            make_filter_fn(pattern)
+        except re.error:
+            return False
+        else:
+            return True
 
     def initial_text(self):
         return Store['user_value']
