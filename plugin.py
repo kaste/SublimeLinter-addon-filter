@@ -137,4 +137,18 @@ class PatternInputHandler(sublime_plugin.TextInputHandler):
         set_filter('')
 
 
+class sublime_linter_addon_cycle_filter_patterns(sublime_plugin.WindowCommand):
+    def run(self, patterns):
+        current_value = Store['user_value']
+        try:
+            next_index = patterns.index(current_value) + 1
+        except ValueError:
+            next_index = 0
+
+        pattern = patterns[next_index % len(patterns)]
+        self.window.run_command(
+            'sublime_linter_addon_filter', {'pattern': pattern}
+        )
+
+
 sublime_linter.update_buffer_errors = update_buffer_errors

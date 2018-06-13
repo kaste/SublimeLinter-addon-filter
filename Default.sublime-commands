@@ -3,4 +3,11 @@
         "caption": "SublimeLinter: Filter Errors",
         "command": "sublime_linter_addon_filter"
     },
+    {
+        "caption": "SublimeLinter: On/Off",
+        "command": "sublime_linter_addon_cycle_filter_patterns",
+        "args": {
+            "patterns": ["-.", ""]
+        }
+    },
 ]
