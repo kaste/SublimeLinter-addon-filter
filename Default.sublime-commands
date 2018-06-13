@@ -1,6 +1,6 @@
 [
     {
         "caption": "SublimeLinter: Filter Errors",
-        "command": "sublime_linter_filter"
+        "command": "sublime_linter_addon_filter"
     },
 ]

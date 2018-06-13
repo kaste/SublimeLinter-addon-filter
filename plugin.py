@@ -110,7 +110,7 @@ def _make_filter_fn(term):
     return fn
 
 
-class sublime_linter_filter(sublime_plugin.WindowCommand):
+class sublime_linter_addon_filter(sublime_plugin.WindowCommand):
     def run(self, pattern=''):
         set_filter(pattern)
 
