@@ -7,6 +7,7 @@ from SublimeLinter import sublime_linter
 
 VIEW_HAS_NOT_CHANGED = lambda: False
 PASS_PREDICATE = lambda x: True
+
 Store = {
     'errors': sublime_linter.persist.errors.copy(),
     'filter_fn': PASS_PREDICATE,
