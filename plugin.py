@@ -112,14 +112,17 @@ def _make_filter_fn(term):
 
 class sublime_linter_addon_filter(sublime_plugin.WindowCommand):
     def run(self, pattern=''):
-        if pattern:
-            self.window.status_message(
-                "Filter pattern set to {!r}.".format(pattern)
-            )
+        try:
+            set_filter(pattern)
+        except Exception as e:
+            self.window.status_message("Invalid pattern: {!r}".format(e))
         else:
-            self.window.status_message("Reset filter pattern.")
-
-        set_filter(pattern)
+            if pattern:
+                self.window.status_message(
+                    "Filter pattern set to {!r}.".format(pattern)
+                )
+            else:
+                self.window.status_message("Reset filter pattern.")
 
     def input(self, args):
         if 'pattern' in args:
