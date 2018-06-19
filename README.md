@@ -27,3 +27,9 @@ You can define a key binding for example to cycle through 'only warnings/only er
 
 There is an on/off switch which toggles quickly all problems. You can reach the command using the Command Palette `SublimeLinter: On/Off`. Look at [`Default.sublime-commands`](https://github.com/kaste/SublimeLinter-addon-filter/blob/master/Default.sublime-commands) for how this is done.
 
+
+
+## Theme support
+
+The plugin will set `sl_filtered_errors` if results are filtered. You can use this to cutomize your theme.
+

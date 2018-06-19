@@ -1,10 +1,12 @@
 from collections import defaultdict
 import re
 
+import sublime
 import sublime_plugin
 from SublimeLinter import sublime_linter
 
 
+THEME_FLAG = 'sl_filtered_errors'
 VIEW_HAS_NOT_CHANGED = lambda: False
 PASS_PREDICATE = lambda x: True
 
@@ -85,6 +87,7 @@ def filter_errors(errors, filename=''):
 def set_filter(pattern):
     Store.update({'user_value': pattern, 'filter_fn': make_filter_fn(pattern)})
     refilter()
+    set_theme_flag(bool(pattern))
 
 
 def make_filter_fn(pattern):
@@ -109,6 +112,14 @@ def _make_filter_fn(term):
         return lambda x: not fn(x)
 
     return fn
+
+
+def set_theme_flag(flag):
+    global_settings = sublime.load_settings('Preferences.sublime-settings')
+    if flag:
+        global_settings.set(THEME_FLAG, True)
+    else:
+        global_settings.erase(THEME_FLAG)
 
 
 class sublime_linter_addon_filter(sublime_plugin.WindowCommand):
