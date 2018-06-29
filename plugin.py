@@ -17,6 +17,20 @@ Store = {
 }
 
 
+class GarbargeController(sublime_plugin.EventListener):
+    def on_pre_close(self, view):
+        bid = view.buffer_id()
+        views_into_buffer = [
+            view
+            for window in sublime.windows()
+            for view in window.views()
+            if view.buffer_id() == bid
+        ]
+
+        if len(views_into_buffer) <= 1:
+            Store['errors'].pop(bid, None)
+
+
 super_fn = sublime_linter.update_buffer_errors
 
 
