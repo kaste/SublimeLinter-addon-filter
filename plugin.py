@@ -1,5 +1,7 @@
 from collections import defaultdict
+from functools import partial, wraps
 import re
+import time
 
 import sublime
 import sublime_plugin
@@ -9,6 +11,7 @@ from SublimeLinter import sublime_linter
 THEME_FLAG = 'sl_filtered_errors'
 VIEW_HAS_NOT_CHANGED = lambda: False
 PASS_PREDICATE = lambda x: True
+NO_OP = lambda: ...
 
 Store = {
     'errors': sublime_linter.persist.errors.copy(),
@@ -98,6 +101,44 @@ def filter_errors(errors, filename=''):
     ]
 
 
+def runtime_for(fn):
+    start_time = time.time()
+    fn()
+    end_time = time.time()
+    return end_time - start_time
+
+
+def throttle(fn):
+    # The difference between running on the main thread or the worker
+    # is kinda huge. To get a 'immediate feel' when possible we measure
+    # the actual runtime of calling `fn` and dynamically decide if we
+    # block or not.
+
+    sink = NO_OP
+    runtime = 0.0
+
+    def tick():
+        nonlocal sink, runtime
+        if sink is NO_OP:
+            return
+
+        sink, sink_ = NO_OP, sink
+        runtime = runtime_for(sink_)
+
+    @wraps(fn)
+    def inner(*args):
+        nonlocal sink
+        sink = partial(fn, *args)
+
+        if runtime < 0.2:
+            tick()
+        else:
+            sublime.set_timeout_async(tick, 0)
+
+    return inner
+
+
+@throttle
 def set_filter(pattern):
     Store.update({'user_value': pattern, 'filter_fn': make_filter_fn(pattern)})
     refilter()
