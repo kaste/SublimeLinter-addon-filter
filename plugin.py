@@ -70,10 +70,14 @@ def update_buffer_errors(bid, view_has_changed, linter, errors):
 
 def refilter():
     for bid, errors in Store['errors'].items():
+        linters_for_buffer = sublime_linter.persist.view_linters.get(bid)
+        if not linters_for_buffer:
+            continue
+
         for linter_name, linter_errors in group_by_linter(errors).items():
             linter = next(
                 linter
-                for linter in sublime_linter.persist.view_linters[bid]
+                for linter in linters_for_buffer
                 if linter.name == linter_name
             )
             super_fn(
