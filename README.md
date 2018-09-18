@@ -33,3 +33,22 @@ There is an on/off switch which toggles quickly all problems. You can reach the 
 
 The plugin will set `sl_filtered_errors` if results are filtered. You can use this to cutomize your theme.
 
+
+## Example and mandatory gif
+
+Using 
+
+```
+  { "keys": ["ctrl+k", "ctrl+f"],
+    "command": "sublime_linter_addon_cycle_filter_patterns",
+    "args": {
+      "patterns": ["-annotations:", "annotations:", ""]
+    }
+  },
+```
+
+I switch 'annotations' on and off. 
+
+![](https://user-images.githubusercontent.com/8558/45646940-f6192700-bac4-11e8-99f6-6b902cb8f229.gif)
+
+Please note, that the status bar also indicates by its color that a filter is applied.
