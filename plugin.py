@@ -11,7 +11,7 @@ from SublimeLinter import sublime_linter
 THEME_FLAG = 'sl_filtered_errors'
 VIEW_HAS_NOT_CHANGED = lambda: False
 PASS_PREDICATE = lambda x: True
-NO_OP = lambda: ...
+NO_OP = lambda *a, **k: ...
 
 Store = {
     'errors': sublime_linter.persist.errors.copy(),
@@ -34,11 +34,23 @@ class GarbargeController(sublime_plugin.EventListener):
             Store['errors'].pop(bid, None)
 
 
-super_fn = sublime_linter.update_buffer_errors
+super_fn = NO_OP
+
+
+def plugin_loaded():
+    global super_fn
+
+    super_fn = sublime_linter.update_buffer_errors
+    sublime_linter.update_buffer_errors = update_buffer_errors
 
 
 def plugin_unloaded():
+    global super_fn
+
+    set_filter('')
+
     sublime_linter.update_buffer_errors = super_fn
+    super_fn = NO_OP
 
 
 def update_buffer_errors(bid, view_has_changed, linter, errors):
@@ -58,10 +70,14 @@ def update_buffer_errors(bid, view_has_changed, linter, errors):
 
 def refilter():
     for bid, errors in Store['errors'].items():
+        linters_for_buffer = sublime_linter.persist.view_linters.get(bid)
+        if not linters_for_buffer:
+            continue
+
         for linter_name, linter_errors in group_by_linter(errors).items():
             linter = next(
                 linter
-                for linter in sublime_linter.persist.view_linters[bid]
+                for linter in linters_for_buffer
                 if linter.name == linter_name
             )
             super_fn(
@@ -238,6 +254,3 @@ class sublime_linter_addon_cycle_filter_patterns(sublime_plugin.WindowCommand):
         self.window.run_command(
             'sublime_linter_addon_filter', {'pattern': pattern}
         )
-
-
-sublime_linter.update_buffer_errors = update_buffer_errors
