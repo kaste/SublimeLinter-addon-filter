@@ -88,8 +88,23 @@ def refilter():
             )
 
 
-def sample_one_error():
-    for bid, errors in sublime_linter.persist.errors.items():
+def sample_one_error(window):
+    # Samples one error for the nice help message for the TextInputHandler.
+    # We take the store in `sublime_linter` bc that's the one that only holds
+    # *filtered* errors. We do the sorting to *prioritize* errors from the
+    # active view or at least current window.
+
+    view = window.active_view()
+    top_bid = view.buffer_id() if view else 0
+    other_bids = {view.buffer_id() for view in window.views()}
+
+    def key_fn(bid_errors):
+        bid, _ = bid_errors
+        return 'a' if bid == top_bid else 'b' if bid in other_bids else 'c'
+
+    for bid, errors in sorted(
+        sublime_linter.persist.errors.items(), key=key_fn
+    ):
         if not errors:
             continue
 
@@ -249,7 +264,7 @@ class PatternInputHandler(sublime_plugin.TextInputHandler):
         else:
             set_filter(pattern)
 
-            sample_error = sample_one_error()
+            sample_error = sample_one_error(self.window)
             hint_msg = (
                 EXAMPLE_MATCH_HINT.format(
                     sample_error.replace('<', '&lt;').replace('>', '&gt;')
