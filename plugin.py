@@ -88,6 +88,26 @@ def refilter():
             )
 
 
+def sample_one_error():
+    for bid, errors in sublime_linter.persist.errors.items():
+        if not errors:
+            continue
+
+        linters_for_buffer = sublime_linter.persist.view_linters.get(bid)
+        if not linters_for_buffer:
+            continue
+
+        error = errors[0]
+        linter_name = error['linter']
+        linter = next(
+            linter
+            for linter in linters_for_buffer
+            if linter.name == linter_name
+        )
+        filename = filename_from_linter(linter)
+        return format_error(error, filename)
+
+
 def filename_from_linter(linter):
     return linter.view.file_name() or '<untitled>'
 
@@ -223,9 +243,22 @@ class PatternInputHandler(sublime_plugin.TextInputHandler):
             make_filter_fn(pattern)
         except re.error as e:
             exc_str = str(e)
-            return "{}{}.".format(exc_str[0].upper(), exc_str[1:])
+            hint_msg = PATTERN_ERROR_HINT.format(
+                exc_str[0].upper() + exc_str[1:]
+            )
+        else:
+            set_filter(pattern)
 
-        set_filter(pattern)
+            sample_error = sample_one_error()
+            hint_msg = (
+                EXAMPLE_MATCH_HINT.format(
+                    sample_error.replace('<', '&lt;').replace('>', '&gt;')
+                )
+                if sample_error
+                else NO_MATCH_HINT
+            )
+
+        return sublime.Html(HELP_MESSAGE.format(hint=hint_msg))
 
     def validate(self, pattern):
         try:
@@ -254,3 +287,39 @@ class sublime_linter_addon_cycle_filter_patterns(sublime_plugin.WindowCommand):
         self.window.run_command(
             'sublime_linter_addon_filter', {'pattern': pattern}
         )
+
+
+HELP_MESSAGE = '''
+    <style>
+        span {{
+            padding: 2px;
+        }}
+    </style>
+    Search term will match against:
+    <i>filename</i>:
+    <i>linter</i>:
+    <i>error_type</i>:
+    <i>code</i>:
+    <i>msg</i>
+    <br /><br />
+    {hint}
+    <br /><br />
+    Prepend '-' to negate
+'''
+EXAMPLE_MATCH_HINT = '''
+    Example match:
+    <br />
+    <span style="background-color: color(black alpha(0.25));">
+        {}
+    </span>
+'''
+NO_MATCH_HINT = '''
+    <span style="background-color: color(red alpha(0.25));">
+        No match
+    </span>
+'''
+PATTERN_ERROR_HINT = '''
+    <span style="background-color: color(red alpha(0.25));">
+        {}
+    </span>
+'''
