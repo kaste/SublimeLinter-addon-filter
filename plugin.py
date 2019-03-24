@@ -60,12 +60,7 @@ def update_buffer_errors(bid, view_has_changed, linter, errors):
         if error['linter'] != linter.name
     ] + errors
 
-    super_fn(
-        bid,
-        view_has_changed,
-        linter,
-        filter_errors(errors, filename_from_linter(linter)),
-    )
+    super_fn(bid, view_has_changed, linter, filter_errors(errors))
 
 
 def refilter():
@@ -81,10 +76,7 @@ def refilter():
                 if linter.name == linter_name
             )
             super_fn(
-                bid,
-                VIEW_HAS_NOT_CHANGED,
-                linter,
-                filter_errors(linter_errors, filename_from_linter(linter)),
+                bid, VIEW_HAS_NOT_CHANGED, linter, filter_errors(linter_errors)
             )
 
 
@@ -113,18 +105,7 @@ def sample_one_error(window):
             continue
 
         error = errors[0]
-        linter_name = error['linter']
-        linter = next(
-            linter
-            for linter in linters_for_buffer
-            if linter.name == linter_name
-        )
-        filename = filename_from_linter(linter)
-        return format_error(error, filename)
-
-
-def filename_from_linter(linter):
-    return linter.view.file_name() or '<untitled>'
+        return format_error(error)
 
 
 def group_by_linter(errors):
@@ -135,21 +116,17 @@ def group_by_linter(errors):
     return by_linter
 
 
-def format_error(error, filename=''):
-    return '{filename}: {linter}: {error_type}: {code}: {msg}'.format(
-        filename=filename, **error
-    )
+def format_error(error):
+    return '{filename}: {linter}: {error_type}: {code}: {msg}'.format(**error)
 
 
-def filter_errors(errors, filename=''):
+def filter_errors(errors):
     filter_fn = Store['filter_fn']
 
     if filter_fn is PASS_PREDICATE:
         return errors
 
-    return [
-        error for error in errors if filter_fn(format_error(error, filename))
-    ]
+    return [error for error in errors if filter_fn(format_error(error))]
 
 
 def runtime_for(fn):
