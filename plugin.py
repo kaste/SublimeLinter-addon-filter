@@ -53,14 +53,14 @@ def plugin_unloaded():
     super_fn = NO_OP
 
 
-def update_buffer_errors(bid, view_has_changed, linter, errors):
+def update_buffer_errors(bid, linter_name, errors):
     Store['errors'][bid] = [
         error
         for error in Store['errors'][bid]
-        if error['linter'] != linter.name
+        if error['linter'] != linter_name
     ] + errors
 
-    super_fn(bid, view_has_changed, linter, filter_errors(errors))
+    super_fn(bid, linter_name, filter_errors(errors))
 
 
 def refilter():
@@ -70,14 +70,7 @@ def refilter():
             continue
 
         for linter_name, linter_errors in group_by_linter(errors).items():
-            linter = next(
-                linter
-                for linter in linters_for_buffer
-                if linter.name == linter_name
-            )
-            super_fn(
-                bid, VIEW_HAS_NOT_CHANGED, linter, filter_errors(linter_errors)
-            )
+            super_fn(bid, linter_name, filter_errors(linter_errors))
 
 
 def sample_one_error(window):
