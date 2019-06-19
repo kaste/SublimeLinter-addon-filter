@@ -53,14 +53,14 @@ def plugin_unloaded():
     super_fn = NO_OP
 
 
-def update_buffer_errors(bid, linter_name, errors):
+def update_buffer_errors(bid, linter_name, errors, reason=None):
     Store['errors'][bid] = [
         error
         for error in Store['errors'][bid]
         if error['linter'] != linter_name
     ] + errors
 
-    super_fn(bid, linter_name, filter_errors(errors))
+    super_fn(bid, linter_name, filter_errors(errors), reason=reason)
 
 
 def refilter():
