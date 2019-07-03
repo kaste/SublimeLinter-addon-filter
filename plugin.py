@@ -4,7 +4,7 @@ import re
 
 import sublime
 import sublime_plugin
-from SublimeLinter import sublime_linter
+from SublimeLinter.lint import persist
 
 
 THEME_FLAG = 'sl_filtered_errors'
@@ -13,7 +13,7 @@ PASS_PREDICATE = lambda x: True
 NO_OP = lambda *a, **k: ...
 
 Store = {
-    'errors': sublime_linter.persist.errors.copy(),
+    'errors': persist.errors.copy(),
     'filter_fn': PASS_PREDICATE,
     'user_value': '',
 }
@@ -37,6 +37,8 @@ super_fn = NO_OP
 
 
 def plugin_loaded():
+    from SublimeLinter import sublime_linter
+
     global super_fn
 
     super_fn = sublime_linter.update_buffer_errors
@@ -44,6 +46,8 @@ def plugin_loaded():
 
 
 def plugin_unloaded():
+    from SublimeLinter import sublime_linter
+
     global super_fn
 
     set_filter('')
@@ -82,9 +86,7 @@ def sample_one_error(window):
         bid, _ = bid_errors
         return 'a' if bid == top_bid else 'b' if bid in other_bids else 'c'
 
-    for bid, errors in sorted(
-        sublime_linter.persist.errors.items(), key=key_fn
-    ):
+    for bid, errors in sorted(persist.errors.items(), key=key_fn):
         if not errors:
             continue
 
