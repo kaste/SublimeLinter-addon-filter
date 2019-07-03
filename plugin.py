@@ -64,10 +64,6 @@ def update_buffer_errors(bid, linter_name, errors, reason=None):
 
 def refilter():
     for bid, errors in Store['errors'].items():
-        linters_for_buffer = sublime_linter.persist.view_linters.get(bid)
-        if not linters_for_buffer:
-            continue
-
         for linter_name, linter_errors in group_by_linter(errors).items():
             super_fn(bid, linter_name, filter_errors(linter_errors))
 
@@ -90,10 +86,6 @@ def sample_one_error(window):
         sublime_linter.persist.errors.items(), key=key_fn
     ):
         if not errors:
-            continue
-
-        linters_for_buffer = sublime_linter.persist.view_linters.get(bid)
-        if not linters_for_buffer:
             continue
 
         error = errors[0]
