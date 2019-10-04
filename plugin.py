@@ -7,30 +7,55 @@ import sublime_plugin
 from SublimeLinter.lint import persist
 
 
+MYPY = False
+if MYPY:
+    from typing import Any, Callable, DefaultDict, Dict, List, Optional
+    from mypy_extensions import TypedDict
+
+    FileName = str
+    LinterName = str
+    Reason = str
+    LintError = persist.LintError
+
+    _State = TypedDict(
+        '_State',
+        {
+            'errors': Dict[FileName, List[LintError]],
+            'filter_fn': Callable[[str], bool],
+            'user_value': str,
+        },
+    )
+
+
 THEME_FLAG = 'sl_filtered_errors'
 VIEW_HAS_NOT_CHANGED = lambda: False
 PASS_PREDICATE = lambda x: True
 NO_OP = lambda *a, **k: ...
 
 Store = {
-    'errors': persist.errors.copy(),
+    'errors': persist.file_errors.copy(),
     'filter_fn': PASS_PREDICATE,
     'user_value': '',
-}
+}  # type: _State
+
+
+def canonical_filename(view):
+    # type: (sublime.View) -> str
+    return view.file_name() or '<untitled {}>'.format(view.buffer_id())
 
 
 class GarbargeController(sublime_plugin.EventListener):
     def on_pre_close(self, view):
-        bid = view.buffer_id()
+        filename = canonical_filename(view)
         views_into_buffer = [
             view
             for window in sublime.windows()
             for view in window.views()
-            if view.buffer_id() == bid
+            if canonical_filename(view) == filename
         ]
 
         if len(views_into_buffer) <= 1:
-            Store['errors'].pop(bid, None)
+            Store['errors'].pop(filename, None)
 
 
 super_fn = NO_OP
@@ -41,8 +66,8 @@ def plugin_loaded():
 
     global super_fn
 
-    super_fn = sublime_linter.update_buffer_errors
-    sublime_linter.update_buffer_errors = update_buffer_errors
+    super_fn = sublime_linter.update_file_errors
+    sublime_linter.update_file_errors = update_file_errors
 
 
 def plugin_unloaded():
@@ -52,61 +77,74 @@ def plugin_unloaded():
 
     set_filter('')
 
-    sublime_linter.update_buffer_errors = super_fn
+    sublime_linter.update_file_errors = super_fn
     super_fn = NO_OP
 
 
-def update_buffer_errors(bid, linter_name, errors, reason=None):
-    Store['errors'][bid] = [
+def update_file_errors(filename, linter, errors, reason=None):
+    # type: (FileName, LinterName, List[LintError], Optional[Reason]) -> None
+    Store['errors'][filename] = [
         error
-        for error in Store['errors'][bid]
-        if error['linter'] != linter_name
+        for error in Store['errors'][filename]
+        if error['linter'] != linter
     ] + errors
 
-    super_fn(bid, linter_name, filter_errors(errors), reason=reason)
+    super_fn(filename, linter, filter_errors(errors), reason=reason)
 
 
-def refilter():
-    for bid, errors in Store['errors'].items():
+def refilter() -> None:
+    for filename, errors in Store['errors'].items():
         for linter_name, linter_errors in group_by_linter(errors).items():
-            super_fn(bid, linter_name, filter_errors(linter_errors))
+            super_fn(filename, linter_name, filter_errors(linter_errors))
 
 
-def sample_one_error(window):
+def sample_one_error(window: sublime.Window) -> "Optional[str]":
     # Samples one error for the nice help message for the TextInputHandler.
     # We take the store in `sublime_linter` bc that's the one that only holds
     # *filtered* errors. We do the sorting to *prioritize* errors from the
     # active view or at least current window.
 
     view = window.active_view()
-    top_bid = view.buffer_id() if view else 0
-    other_bids = {view.buffer_id() for view in window.views()}
+    top_filename = canonical_filename(view) if view else ''
+    other_filenames = {canonical_filename(view) for view in window.views()}
 
-    def key_fn(bid_errors):
-        bid, _ = bid_errors
-        return 'a' if bid == top_bid else 'b' if bid in other_bids else 'c'
+    def key_fn(filename_errors):
+        filename, _ = filename_errors
+        return (
+            'a'
+            if filename == top_filename
+            else 'b'
+            if filename in other_filenames
+            else 'c'
+        )
 
-    for bid, errors in sorted(persist.errors.items(), key=key_fn):
+    for filename, errors in sorted(persist.file_errors.items(), key=key_fn):
         if not errors:
             continue
 
         error = errors[0]
         return format_error(error)
+    else:
+        return None
 
 
-def group_by_linter(errors):
-    by_linter = defaultdict(list)
+def group_by_linter(
+    errors: "List[LintError]"
+) -> "Dict[LinterName, List[LintError]]":
+    by_linter = defaultdict(
+        list
+    )  # type: DefaultDict[LinterName, List[LintError]]
     for error in errors:
         by_linter[error['linter']].append(error)
 
     return by_linter
 
 
-def format_error(error):
+def format_error(error: "LintError") -> str:
     return '{filename}: {linter}: {error_type}: {code}: {msg}'.format(**error)
 
 
-def filter_errors(errors):
+def filter_errors(errors: "List[LintError]") -> "List[LintError]":
     filter_fn = Store['filter_fn']
 
     if filter_fn is PASS_PREDICATE:
@@ -115,13 +153,13 @@ def filter_errors(errors):
     return [error for error in errors if filter_fn(format_error(error))]
 
 
-def set_filter(pattern):
+def set_filter(pattern: str) -> None:
     Store.update({'user_value': pattern, 'filter_fn': make_filter_fn(pattern)})
     refilter()
     set_theme_flag(bool(pattern))
 
 
-def make_filter_fn(pattern):
+def make_filter_fn(pattern: str) -> "Callable[[str], bool]":
     pattern = pattern.strip()
     if not pattern:
         return PASS_PREDICATE
@@ -130,7 +168,7 @@ def make_filter_fn(pattern):
     return lambda x: any(f(x) for f in fns)
 
 
-def _make_filter_fn(term):
+def _make_filter_fn(term: str) -> "Callable[[str], Any]":
     negate = term.startswith('-')
     if negate:
         term = term[1:]
@@ -145,7 +183,7 @@ def _make_filter_fn(term):
     return fn
 
 
-def set_theme_flag(flag):
+def set_theme_flag(flag: bool) -> None:
     global_settings = sublime.load_settings('Preferences.sublime-settings')
     if flag:
         global_settings.set(THEME_FLAG, True)
