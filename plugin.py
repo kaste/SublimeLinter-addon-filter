@@ -1,6 +1,7 @@
 from collections import defaultdict
 from functools import partial
 import re
+import sys
 
 import sublime
 import sublime_plugin
@@ -39,6 +40,11 @@ Store = {
 }  # type: _State
 
 
+def dprint(*a, **k):
+    # print(*a, **k)
+    ...
+
+
 def canonical_filename(view):
     # type: (sublime.View) -> str
     return view.file_name() or '<untitled {}>'.format(view.buffer_id())
@@ -58,30 +64,67 @@ class GarbargeController(sublime_plugin.EventListener):
             Store['errors'].pop(filename, None)
 
 
-super_fn = NO_OP
+try:
+    super_fn
+except NameError:
+    dprint('=<> Init super_fn to None.')
+    super_fn = None  # type: Optional[Callable]
+else:
+    dprint('=<> Using super_fn from before while hot-reloading.')
 
 
 def plugin_loaded():
-    from SublimeLinter import sublime_linter
-
-    global super_fn
-
-    super_fn = sublime_linter.update_file_errors
-    sublime_linter.update_file_errors = update_file_errors
+    dprint('=<> plugin_loaded')
+    patch_sublime_linter()
 
 
 def plugin_unloaded():
-    from SublimeLinter import sublime_linter
+    dprint('=<> plugin_unloaded')
+    unpatch_sublime_linter()
 
+
+def get_plugin_module():
+    try:
+        return sys.modules['SublimeLinter.sublime_linter']
+    except LookupError:
+        flash("addon-filter: SublimeLinter not installed. 😕")
+        return
+
+
+def patch_sublime_linter():
     global super_fn
+    plugin = get_plugin_module()
+    if not plugin:
+        return
 
-    set_filter('')
+    if plugin.update_file_errors.__name__ == 'patched_update_file_errors':
+        flash("addon-filter: Already patched, how's that? 🤔")
+    else:
+        super_fn = plugin.update_file_errors
 
-    sublime_linter.update_file_errors = super_fn
-    super_fn = NO_OP
+    dprint('--> Patching')
+    plugin.update_file_errors = patched_update_file_errors
 
 
-def update_file_errors(filename, linter, errors, reason=None):
+def unpatch_sublime_linter():
+    global super_fn
+    if super_fn is None:
+        return
+
+    plugin = get_plugin_module()
+    if not plugin:
+        return
+
+    dprint('--> Un-patching')
+    if plugin.update_file_errors.__name__ != 'patched_update_file_errors':
+        flash("addon-filter: Already unpatched, how's that? 🤔")
+    else:
+        plugin.update_file_errors = super_fn
+
+    super_fn = None
+
+
+def patched_update_file_errors(filename, linter, errors, reason=None):
     # type: (FileName, LinterName, List[LintError], Optional[Reason]) -> None
     Store['errors'][filename] = [
         error
@@ -196,14 +239,14 @@ class sublime_linter_addon_filter(sublime_plugin.WindowCommand):
         try:
             set_filter(pattern)
         except Exception as e:
-            self.window.status_message("Invalid pattern: {!r}".format(e))
+            flash("Invalid pattern: {!r}".format(e), self.window)
         else:
             if pattern:
-                self.window.status_message(
-                    "Filter pattern set to {!r}.".format(pattern)
+                flash(
+                    "Filter pattern set to {!r}.".format(pattern), self.window
                 )
             else:
-                self.window.status_message("Reset filter pattern.")
+                flash("Reset filter pattern.", self.window)
 
     def input(self, args):
         if 'pattern' in args:
@@ -305,3 +348,11 @@ PATTERN_ERROR_HINT = '''
         {}
     </span>
 '''
+
+
+def flash(message, window: 'Optional[sublime.Window]' = None):
+    print(message)
+    if window is None:
+        window = sublime.active_window()
+    if window:
+        window.status_message(message)
