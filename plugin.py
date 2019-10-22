@@ -354,5 +354,5 @@ def flash(message, window: 'Optional[sublime.Window]' = None):
     print(message)
     if window is None:
         window = sublime.active_window()
-    if window:
-        window.status_message(message)
+
+    window.status_message(message)
