@@ -31,7 +31,7 @@ There is an on/off switch which toggles quickly all problems. You can reach the 
 
 ## Theme support
 
-The plugin will set `sl_filtered_errors` if results are filtered. You can use this to cutomize your theme.
+The plugin will set `sl_filtered_errors` if results are filtered. You can use this to customize your theme.
 
 
 ## Example and mandatory gif
