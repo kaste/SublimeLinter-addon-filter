@@ -172,7 +172,7 @@ def sample_one_error(window: sublime.Window) -> "Optional[str]":
 
 
 def group_by_linter(
-    errors: "List[LintError]"
+    errors: "List[LintError]",
 ) -> "Dict[LinterName, List[LintError]]":
     by_linter = defaultdict(
         list
