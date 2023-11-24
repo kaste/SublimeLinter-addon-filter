@@ -1,7 +1,8 @@
 from collections import defaultdict
-from functools import partial
+from functools import partial, wraps
 import re
 import sys
+import time
 
 import sublime
 import sublime_plugin
@@ -196,6 +197,44 @@ def filter_errors(errors: "List[LintError]") -> "List[LintError]":
     return [error for error in errors if filter_fn(format_error(error))]
 
 
+def runtime_for(fn):
+    start_time = time.time()
+    fn()
+    end_time = time.time()
+    return end_time - start_time
+
+
+def throttle(fn):
+    # The difference between running on the main thread or the worker
+    # is kinda huge. To get a 'immediate feel' when possible we measure
+    # the actual runtime of calling `fn` and dynamically decide if we
+    # block or not.
+
+    sink = NO_OP
+    runtime = 0.0
+
+    def tick():
+        nonlocal sink, runtime
+        if sink is NO_OP:
+            return
+
+        sink, sink_ = NO_OP, sink
+        runtime = runtime_for(sink_)
+
+    @wraps(fn)
+    def inner(*args):
+        nonlocal sink
+        sink = partial(fn, *args)
+
+        if runtime < 0.2:
+            tick()
+        else:
+            sublime.set_timeout_async(tick, 0)
+
+    return inner
+
+
+@throttle
 def set_filter(pattern: str) -> None:
     Store.update({'user_value': pattern, 'filter_fn': make_filter_fn(pattern)})
     refilter()
@@ -268,11 +307,7 @@ class PatternInputHandler(sublime_plugin.TextInputHandler):
                 exc_str[0].upper() + exc_str[1:]
             )
         else:
-            # Work-around https://github.com/SublimeTextIssues/Core/issues/2884
-            # Calling this from the worker doesn't crash at least but the UX
-            # is bad. 1. It is too laggy, 2. `sample_one_error` will work on
-            # wrong, outdated data set.
-            sublime.set_timeout_async(partial(set_filter, pattern))
+            set_filter(pattern)
 
             sample_error = sample_one_error(self.window)
             hint_msg = (
