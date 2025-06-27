@@ -8,7 +8,6 @@ import sublime
 import sublime_plugin
 from SublimeLinter.lint import persist
 
-
 MYPY = False
 if MYPY:
     from typing import Any, Callable, DefaultDict, Dict, List, Optional
@@ -84,9 +83,9 @@ def plugin_unloaded():
     unpatch_sublime_linter()
 
 
-def get_plugin_module():
+def get_persist_module():
     try:
-        return sys.modules['SublimeLinter.sublime_linter']
+        return sys.modules['SublimeLinter.lint.persist']
     except LookupError:
         flash("addon-filter: SublimeLinter not installed. 😕")
         return
@@ -94,7 +93,7 @@ def get_plugin_module():
 
 def patch_sublime_linter():
     global super_fn
-    plugin = get_plugin_module()
+    plugin = get_persist_module()
     if not plugin:
         return
 
@@ -112,7 +111,7 @@ def unpatch_sublime_linter():
     if super_fn is None:
         return
 
-    plugin = get_plugin_module()
+    plugin = get_persist_module()
     if not plugin:
         return
 
