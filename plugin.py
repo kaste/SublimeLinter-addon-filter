@@ -245,7 +245,7 @@ def make_filter_fn(pattern: str) -> "Callable[[str], bool]":
     # An error is shown if it matches any of the positive terms (or there are
     # none) and none of the negated terms.
     positive = [_make_filter_fn(t) for t in terms if not t.startswith('-')]
-    negative = [_make_filter_fn(t) for t in terms if t.startswith('-') and len(t) > 1]
+    negative = [_make_filter_fn(t) for t in terms if t.startswith('-')]
     if not positive and not negative:
         return PASS_PREDICATE
 
@@ -260,7 +260,8 @@ def _make_filter_fn(term: str) -> "Callable[[str], Any]":
         term = term[1:]
 
     if not term:
-        return PASS_PREDICATE
+        # A lone '-' (e.g. while typing) is neutral: it matches nothing.
+        return lambda x: False
 
     return re.compile(term).search
 
