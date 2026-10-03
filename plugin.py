@@ -241,27 +241,28 @@ def set_filter(pattern: str) -> None:
 
 
 def make_filter_fn(pattern: str) -> "Callable[[str], bool]":
-    pattern = pattern.strip()
-    if not pattern:
+    terms = pattern.split()
+    # An error is shown if it matches any of the positive terms (or there are
+    # none) and none of the negated terms.
+    positive = [_make_filter_fn(t) for t in terms if not t.startswith('-')]
+    negative = [_make_filter_fn(t) for t in terms if t.startswith('-') and len(t) > 1]
+    if not positive and not negative:
         return PASS_PREDICATE
 
-    fns = [_make_filter_fn(term) for term in pattern.split(' ') if term]
-    return lambda x: any(f(x) for f in fns)
+    return lambda x: (
+        (not positive or any(f(x) for f in positive))
+        and not any(f(x) for f in negative)
+    )
 
 
 def _make_filter_fn(term: str) -> "Callable[[str], Any]":
-    negate = term.startswith('-')
-    if negate:
+    if term.startswith('-'):
         term = term[1:]
 
     if not term:
         return PASS_PREDICATE
 
-    fn = re.compile(term).search
-    if negate:
-        return lambda x: not fn(x)
-
-    return fn
+    return re.compile(term).search
 
 
 def set_theme_flag(flag: bool) -> None:
