@@ -245,8 +245,11 @@ def make_filter_fn(pattern: str) -> "Callable[[str], bool]":
     if not pattern:
         return PASS_PREDICATE
 
-    fns = [_make_filter_fn(term) for term in pattern.split(' ') if term]
-    return lambda x: any(f(x) for f in fns)
+    terms = [term for term in pattern.split(' ') if term]
+    positive = [_make_filter_fn(t) for t in terms if not t.startswith('-')] or [PASS_PREDICATE]
+    negative = [_make_filter_fn(t) for t in terms if t.startswith('-')]
+
+    return lambda x: any(f(x) for f in positive) and all(f(x) for f in negative)
 
 
 def _make_filter_fn(term: str) -> "Callable[[str], Any]":
